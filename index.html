@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Geopolitics 2025 — 原型 v3 (30國)</title>
+<style>
+  :root{ --bg:#0e1320; --card:#161b2d; --ink:#e9edff; --muted:#a6b1d6; --line:#242a48; --accent:#6ea8fe; --good:#70d7a0; --bad:#ff6b81; }
+  *{box-sizing:border-box} html,body{height:100%}
+  body{margin:0;background:linear-gradient(180deg,#0e1320,#0a0f1a);color:var(--ink);
+       font:15px/1.5 system-ui,-apple-system,"PingFang TC","Noto Sans TC",sans-serif}
+  header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--line)}
+  header h1{font-size:18px;margin:0}
+  .small{font-size:12px;color:var(--muted)}
+  main{display:grid;grid-template-columns:280px 1fr;gap:12px;padding:12px}
+  @media (max-width:1000px){ main{grid-template-columns:1fr} }
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;box-shadow:0 10px 24px rgba(0,0,0,.3)}
+  .card h2{margin:0;padding:10px 12px;border-bottom:1px solid var(--line);font-size:15px}
+  .section{padding:10px 12px}
+  select,button{all:unset;background:#1a2140;border:1px solid #2a335f;border-radius:10px;padding:8px;cursor:pointer}
+  button:hover{border-color:#3b4690} button:disabled{opacity:.5;cursor:not-allowed}
+  .pill{display:inline-block;padding:4px 8px;border:1px solid #2a335f;border-radius:999px;color:var(--muted);margin-right:6px;margin-bottom:6px}
+  .meters{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+  @media (max-width:720px){ .meters{grid-template-columns:1fr} }
+  .meter{background:#121731;border:1px solid #2a335f;border-radius:8px;padding:8px}
+  .bar{height:8px;background:#0b1024;border:1px solid #2a335f;border-radius:999px;overflow:hidden;margin-top:6px}
+  .bar > span{display:block;height:100%;background:var(--accent);width:0%}
+  .bar.good > span{background:var(--good)} .bar.bad > span{background:var(--bad)}
+  .map{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
+  .tile{background:#121731;border:1px solid #2a335f;border-radius:8px;padding:6px;text-align:center}
+  .tile b{display:block;font-size:12px;color:var(--muted)}
+  .tile span{display:block;margin-top:2px;font-weight:700}
+  .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+  .log{height:360px;overflow:auto;background:#0f1330;border:1px solid var(--line);border-radius:10px;padding:10px;font-family:ui-monospace,Menlo,Consolas,monospace}
+  .grid2{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Geopolitics 2025 — 原型 v3</h1>
+  <div class="small">若你是從「檔案App」的預覽開啟，請點右上角分享 →「在 Safari 開啟」。</div>
+</header>
+<main>
+  <aside class="card">
+    <h2>開局設定</h2>
+    <div class="section">
+      <div class="row">
+        <label>選擇國家
+          <select id="countrySelect" aria-label="選擇國家"></select>
+        </label>
+      </div>
+      <div class="row">
+        <label>難度
+          <select id="difficulty" aria-label="選擇難度">
+            <option value="easy">新手</option>
+            <option value="normal" selected>普通</option>
+            <option value="hard">地獄</option>
+          </select>
+        </label>
+      </div>
+      <div class="row">
+        <button id="btnStart">開始遊戲</button>
+        <button id="btnReset" disabled>重開</button>
+      </div>
+      <div class="small" id="envTip"></div>
+    </div>
+    <h2>世界總覽</h2>
+    <div class="section">
+      <div class="map" id="worldMap"></div>
+      <div class="small" style="margin-top:6px">顏色：民主 / 威權 / 混合</div>
+    </div>
+  </aside>
+
+  <section class="card">
+    <h2>國家儀表（<span id="uiCountry">—</span>）</h2>
+    <div class="section">
+      <div class="row">
+        <span class="pill">回合：<b id="turn">—</b></span>
+        <span class="pill">本回合 RP：<b id="rp">—</b></span>
+        <span class="pill">月稅收（估）：<b id="revenue">—</b></span>
+        <span class="pill">政體：<b id="regime">—</b></span>
+      </div>
+      <div class="meters" style="margin-top:8px">
+        <div class="meter"><div>人民好感</div><div class="bar good"><span id="mApproval"></span></div></div>
+        <div class="meter"><div>國際支持</div><div class="bar"><span id="mIntl"></span></div></div>
+        <div class="meter"><div>敵對態度</div><div class="bar bad"><span id="mRivals"></span></div></div>
+        <div class="meter"><div>財政健康</div><div class="bar"><span id="mFiscal"></span></div></div>
+      </div>
+    </div>
+
+    <h2>行動（消耗 RP）</h2>
+    <div class="section" id="actions"></div>
+    <div class="section">
+      <div class="row"><button id="btnEndTurn" disabled>結束回合 ➜ 結算</button></div>
+    </div>
+
+    <h2>科技樹（簡化示意）</h2>
+    <div class="section">
+      <div class="grid2" id="techList"></div>
+    </div>
+
+    <h2>戰報</h2>
+    <div class="section log" id="log"></div>
+  </section>
+</main>
+
+<script>
+(function(){
+  // 確保在 DOMContentLoaded 後再初始化（iOS 上必要）
+  document.addEventListener('DOMContentLoaded', init, {once:true});
+
+  function init(){
+    const logDiv = document.getElementById('log');
+    const log = (t)=>{ const p=document.createElement('p'); p.textContent=t; logDiv.appendChild(p); logDiv.scrollTop=logDiv.scrollHeight; };
+
+    // iOS Quick Look 檢測提示
+    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+    const isFileScheme = location.protocol === 'file:';
+    if(isFileScheme){
+      document.getElementById('envTip').textContent = '提示：若無法互動，請用「分享 → 在 Safari 開啟」。';
+    }
+    if(!isSafari){
+      document.getElementById('envTip').textContent = '建議用 Safari/Chrome 最新版。';
+    }
+
+    // 占位資料
+    const COUNTRIES=[
+      ["USA","美國","democracy",28500,0.26,90,{},["UK","CAN","JPN","AUS","KOR","DEU"],["CHN","RUS","IRN"]],
+      ["CHN","中國","autocracy",17700,0.20,85,{},["RUS","IRN","PRK","PAK"],["USA","JPN","IND","TWN"]],
+      ["TWN","台灣","democracy",790,0.17,60,{},["USA","JPN"],["CHN"]],
+      ["JPN","日本","democracy",4200,0.28,75,{},["USA","TWN"],["CHN","PRK"]],
+      ["KOR","韓國","democracy",1900,0.25,70,{},["USA","JPN"],["PRK","CHN"]],
+      ["IND","印度","hybrid",3600,0.18,70,{},["USA","FRA","AUS"],["CHN","PAK"]],
+      ["RUS","俄羅斯","autocracy",1900,0.18,80,{},["CHN","IRN"],["USA","UKR","NATO"]],
+      ["UKR","烏克蘭","democracy",200,0.16,60,{},["USA","POL"],["RUS"]],
+      ["UK","英國","democracy",3300,0.27,70,{},["USA","FRA","DEU"],["RUS"]],
+      ["FRA","法國","democracy",3000,0.29,70,{},["DEU","UK","USA"],["RUS"]],
+      ["DEU","德國","democracy",4400,0.30,65,{},["FRA","POL","USA"],["RUS"]],
+      ["ITA","義大利","democracy",2100,0.29,55,{},["DEU","FRA"],[""]],
+      ["ESP","西班牙","democracy",1600,0.28,50,{},["FRA","DEU"],[""]],
+      ["POL","波蘭","democracy",800,0.19,60,{},["USA","UKR","DEU"],["RUS"]],
+      ["TUR","土耳其","hybrid",905,0.20,65,{},["AZE","QAT"],["GRC","SYR"]],
+      ["IRN","伊朗","autocracy",388,0.15,65,{},["RUS","SYR"],["USA","ISR","KSA"]],
+      ["ISR","以色列","democracy",520,0.23,70,{},["USA"],["IRN"]],
+      ["KSA","沙烏地阿拉伯","autocracy",1100,0.10,65,{},["UAE","EGY"],["IRN"]],
+      ["UAE","阿聯酋","autocracy",500,0.05,55,{},["KSA"],["IRN"]],
+      ["EGY","埃及","autocracy",475,0.15,50,{},["KSA"],["ETH"]],
+      ["NGA","奈及利亞","hybrid",480,0.08,45,{},["GHA"],["BOKO"]],
+      ["ZAF","南非","democracy",420,0.20,50,{},[""],[""]],
+      ["BRA","巴西","democracy",2260,0.22,55,{},["ARG"],["VEN"]],
+      ["ARG","阿根廷","democracy",620,0.18,45,{},["BRA"],[""]],
+      ["MEX","墨西哥","democracy",1700,0.17,50,{},["USA","CAN"],[""]],
+      ["CAN","加拿大","democracy",2300,0.27,60,{},["USA"],[""]],
+      ["AUS","澳洲","democracy",1700,0.25,60,{},["USA","JPN"],["CHN"]],
+      ["IDN","印尼","democracy",1500,0.12,50,{},[""],[""]],
+      ["VNM","越南","autocracy",430,0.10,55,{},["RUS"],["CHN (海)"]],
+      ["THA","泰國","hybrid",540,0.15,50,{},[""],[""]]
+    ];
+
+    const ACTIONS=[
+      {id:"military",name:"軍事部署（RP4/金20）",rp:4,cost:20,effect:(S)=>{S.approval-=1;S.rivals+=5;S.intl-=1;log("軍事部署：民心-1、敵對+5、國際-1");}},
+      {id:"conflict",name:"邊境衝突（RP6/金40）",rp:6,cost:40,effect:(S)=>{const r=Math.floor(Math.random()*6)+1; if(r<=2){S.approval-=4;S.intl-=3;log(`衝突失利（${r}）`);} else if(r==3){log("僵持");} else if(r<=5){S.rivals-=4;S.intl-=1;log("小勝");} else {S.rivals-=8;S.intl-=2;S.approval+=2;log("大勝");}}},
+      {id:"diplomacy",name:"外交拉攏（RP3/金10）",rp:3,cost:10,effect:(S)=>{S.intl+=2;log("外交：國際支持+2");}},
+      {id:"welfare",name:"社會福利（RP3/金25）",rp:3,cost:25,effect:(S)=>{S.approval+=4;S.fiscal-=2;log("福利：民心+4、財政-2");}},
+      {id:"propaganda",name:"宣傳戰（RP2/金8）",rp:2,cost:8,effect:(S)=>{const r=Math.floor(Math.random()*6)+1; if(r==1){S.approval-=2;S.intl-=1;log("宣傳反噬");} else if(r<=3){S.approval+=1;log("成效有限");} else {S.approval+=3;S.intl+=1;log("成效良好");}}}
+    ];
+
+    const TECH=[
+      {id:"mil_uav_swarm",domain:"mil",name:"無人機蜂群",cost:120,turns:6},
+      {id:"it_ai_compute",domain:"it",name:"AI 算力中心",cost:200,turns:10},
+      {id:"ind_smart_grid",domain:"energy",name:"智慧電網",cost:160,turns:7},
+      {id:"bio_public_health",domain:"bio",name:"公共衛生數位化",cost:130,turns:6}
+    ];
+
+    const State={started:false,turn:0,rp:0,money:0,country:null,difficulty:"normal",
+                 approval:55,intl:50,rivals:50,fiscal:55,techProgress:{}};
+
+    // 填入國家
+    const sel=document.getElementById('countrySelect');
+    COUNTRIES.forEach(c=>{ const o=document.createElement('option'); o.value=c[0]; o.textContent=`${c[1]} (${c[0]})`; sel.appendChild(o); });
+    // 畫地圖簡表
+    const worldMap=document.getElementById('worldMap');
+    COUNTRIES.forEach(c=>{ const div=document.createElement('div'); div.className='tile'; div.innerHTML=`<b>${c[1]}</b><span>${c[2]}</span>`; worldMap.appendChild(div); });
+
+    function updateMeters(){
+      document.getElementById('turn').textContent=State.turn;
+      document.getElementById('rp').textContent=State.rp;
+      document.getElementById('revenue').textContent=State.money;
+      document.getElementById('mApproval').style.width=State.approval+'%';
+      document.getElementById('mIntl').style.width=State.intl+'%';
+      document.getElementById('mRivals').style.width=State.rivals+'%';
+      document.getElementById('mFiscal').style.width=State.fiscal+'%';
+    }
+
+    function buildActions(){
+      const wrap=document.getElementById('actions'); wrap.innerHTML='';
+      ACTIONS.forEach(a=>{
+        const btn=document.createElement('button'); btn.textContent=a.name;
+        btn.onclick=()=>{
+          if(State.rp<a.rp){ log("RP 不足"); return; }
+          if(State.money<a.cost){ log("金錢不足"); return; }
+          State.rp-=a.rp; State.money-=a.cost; a.effect(State); updateMeters();
+        };
+        wrap.appendChild(btn);
+      });
+    }
+
+    function buildTech(){
+      const box=document.getElementById('techList'); box.innerHTML='';
+      TECH.forEach(t=>{
+        const prog=State.techProgress[t.id] || {left:t.turns,started:false,done:false};
+        State.techProgress[t.id]=prog;
+        const pct=prog.done?100:Math.round(100*(1-prog.left/t.turns));
+        const card=document.createElement('div'); card.className='meter';
+        card.innerHTML=`<div><b>[${t.domain}] ${t.name}</b></div>
+          <div class="bar"><span style="width:${pct}%"></span></div>
+          <div class="small">成本:${t.cost} 回合:${t.turns} 剩餘:${prog.done?0:prog.left}</div>
+          <div class="row">
+            <button ${prog.started&&!prog.done?'disabled':''} data-id="${t.id}">${prog.done?'已完成':'投入研究'}</button>
+            <button ${(!prog.started||prog.done)?'disabled':''} data-acc="${t.id}">加速（RP2/金15）</button>
+          </div>`;
+        box.appendChild(card);
+      });
+      box.querySelectorAll('button[data-id]').forEach(b=>{
+        b.onclick=()=>{
+          const id=b.getAttribute('data-id'); const t=TECH.find(x=>x.id===id);
+          const p=State.techProgress[id]; if(p.done) return;
+          if(State.rp<3 || State.money<Math.round(t.cost*0.3)){ log("研究啟動條件不足"); return; }
+          State.rp-=3; State.money-=Math.round(t.cost*0.3); p.started=true;
+          log(`開始研究：${t.name}（剩 ${p.left} 回合）`); buildTech(); updateMeters();
+        };
+      });
+      box.querySelectorAll('button[data-acc]').forEach(b=>{
+        b.onclick=()=>{
+          const id=b.getAttribute('data-acc'); const t=TECH.find(x=>x.id===id);
+          const p=State.techProgress[id]; if(!p.started||p.done) return;
+          if(State.rp<2 || State.money<15){ log("加速條件不足"); return; }
+          State.rp-=2; State.money-=15; p.left=Math.max(1,p.left-1);
+          log(`加速研究：${t.name}（剩 ${p.left} 回合）`); buildTech(); updateMeters();
+        };
+      });
+    }
+
+    document.getElementById('btnStart').onclick=()=>{
+      const id=sel.value; const c=COUNTRIES.find(x=>x[0]===id);
+      State.started=true; State.turn=1; State.rp=10; State.money=Math.floor(c[3]*c[4]/12/10);
+      document.getElementById('uiCountry').textContent=`${c[1]} (${c[0]})`;
+      document.getElementById('regime').textContent=c[2];
+      document.getElementById('btnReset').disabled=false;
+      document.getElementById('btnEndTurn').disabled=false;
+      document.getElementById('log').innerHTML='';
+      log(`遊戲開始：${c[1]}（難度：${document.getElementById('difficulty').value}）`);
+      buildActions(); buildTech(); updateMeters();
+    };
+
+    document.getElementById('btnReset').onclick=()=>{ location.reload(); };
+    document.getElementById('btnEndTurn').onclick=()=>{
+      if(!State.started) return;
+      // 簡化結算：加月收、隨機事件、RP 補充
+      State.money += max0(Math.round(State.money*0.15));
+      if(Math.random()<0.5){ log("事件：盟友合作，國際支持 +1"); State.intl+=1; }
+      else { log("事件：市場波動，財政 -1"); State.fiscal-=1; }
+      // 科技流逝
+      Object.values(State.techProgress).forEach(p=>{ if(p.started&&!p.done){ p.left--; if(p.left<=0){ p.done=true; log("科技完成一項"); }}});
+      State.turn++; State.rp=10; updateMeters(); log(`—— 進入第 ${State.turn} 回合 ——`);
+    };
+
+    function max0(x){ return x<0?0:x; }
+
+    // 成功載入提示
+    log("✅ 原型已載入（v3）。若你看得到這行字，代表腳本已執行。");
+  }
+})();
+</script>
+</body>
+</html>
